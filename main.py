@@ -42,7 +42,7 @@ def jiggle_mouse():
         x, y = pyautogui.position()
         pyautogui.moveTo(x + 1, y)
         pyautogui.moveTo(x, y)
-        print(f"[🖱️] 마우스 움직임: {datetime.now()}")
+        print(f"마우스 움직임: {datetime.now()}")
     except Exception as e:
         print("마우스 이동 실패:", e)
 
@@ -56,9 +56,9 @@ def raise_airserver_window():
             win32gui.SetForegroundWindow(hwnd)
             win32gui.SetWindowPos(hwnd, win32con.HWND_TOPMOST, 0, 0, 0, 0,
                                   win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-            print("[🔝] AirServer 창을 최상단으로 올림")
+            print(" AirServer 창을 최상단으로 올림")
             return
-        print("[!] AirServer 창을 찾지 못함")
+        print(" AirServer 창을 찾지 못함")
     except Exception as e:
         print("AirServer 최상단 올리기 실패:", e)
 
@@ -68,7 +68,7 @@ def untop_airserver_window():
             hwnd = win._hWnd
             win32gui.SetWindowPos(hwnd, win32con.HWND_NOTOPMOST, 0, 0, 0, 0,
                                   win32con.SWP_NOMOVE | win32con.SWP_NOSIZE)
-            print("[⬇️] AirServer 창을 일반 창으로 내림")
+            print(" AirServer 창을 일반 창으로 내림")
             return
     except Exception as e:
         print("AirServer 창 내리기 실패:", e)
