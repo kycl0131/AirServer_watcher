@@ -20,7 +20,9 @@ ES_CONTINUOUS       = 0x80000000
 ES_DISPLAY_REQUIRED = 0x00000002
 
 def prevent_display_off():
-    ctypes.windll.kernel32.SetThreadExecutionState(ES_CONTINUOUS | ES_DISPLAY_REQUIRED)
+    ctypes.windll.kernel32.SetThreadExecutionState(
+        ES_CONTINUOUS | ES_DISPLAY_REQUIRED
+    )
     logger.info("⏱️ Display sleep prevented")
 
 def clear_execution_state():
@@ -33,6 +35,7 @@ def toggle_fullscreen_flag():
     global AUTO_FULLSCREEN
     AUTO_FULLSCREEN = not AUTO_FULLSCREEN
     logger.info(f"🔀 Auto-fullscreen: {'ON' if AUTO_FULLSCREEN else 'OFF'}")
+
 keyboard.add_hotkey('ctrl+alt+f', toggle_fullscreen_flag)
 
 # ─────────── AirPlay 감시 설정 ───────────
@@ -49,10 +52,12 @@ def count_established_sessions():
     return cnt, video_cnt
 
 def is_airplay_active():
-    proc_found = any(p.info.get('name','').lower()==PROCESS_NAME.lower()
-                     for p in psutil.process_iter(['name']))
+    proc_found = any(
+        p.info.get('name','').lower() == PROCESS_NAME.lower()
+        for p in psutil.process_iter(['name'])
+    )
     sessions, video_sessions = count_established_sessions()
-    return proc_found and sessions>0, video_sessions>0
+    return proc_found and sessions > 0, video_sessions > 0
 
 # ─────────── 스크린세이버 체크 ───────────
 SPI_GETSCREENSAVERRUNNING = 114
@@ -66,7 +71,7 @@ def is_screensaver_running():
 
 def wait_for_screensaver_off(timeout=5, poll=0.2):
     start = time.time()
-    while time.time()-start < timeout:
+    while time.time() - start < timeout:
         if not is_screensaver_running():
             return True
         time.sleep(poll)
@@ -103,16 +108,26 @@ def jiggle_mouse_and_save(delta=1):
 
 def restore_mouse_position():
     global _original_mouse_pos
-    if _original_mouse_pos:
-        pyautogui.moveTo(_original_mouse_pos)
+    if _original_mouse_pos is None:
+        return
+    # Fail-Safe 비활성화
+    prev = pyautogui.FAILSAFE
+    pyautogui.FAILSAFE = False
+    try:
+        pyautogui.moveTo(_original_mouse_pos.x, _original_mouse_pos.y)
         logger.info(f"🖱️ Restored mouse to {_original_mouse_pos}")
+    except Exception as e:
+        logger.error(f"Failed to restore mouse: {e}")
+    finally:
+        # 원래 Fail-Safe 설정 복원
+        pyautogui.FAILSAFE = prev
         _original_mouse_pos = None
 
 def move_mouse_away():
     if not airserver_hwnd or not win32gui.IsWindow(airserver_hwnd):
         return
-    l,t,r,b = win32gui.GetWindowRect(airserver_hwnd)
-    sw,sh   = pyautogui.size()
+    l, t, r, b = win32gui.GetWindowRect(airserver_hwnd)
+    sw, sh     = pyautogui.size()
     x = max(10, min(sw-50, r+50))
     y = max(10, min(sh-50, b+50))
     pyautogui.moveTo(x, y)
@@ -127,9 +142,9 @@ def raise_window():
         return False
 
     if is_screensaver_running():
+        logger.info("Screensaver running, waiting to turn off…")
         wait_for_screensaver_off()
 
-    # 복원 & 포그라운드
     if win32gui.IsIconic(airserver_hwnd):
         win32gui.ShowWindow(airserver_hwnd, win32con.SW_RESTORE)
         time.sleep(0.2)
@@ -143,7 +158,9 @@ def raise_window():
     return True
 
 def double_fullscreen():
-    l,t,r,b = win32gui.GetWindowRect(airserver_hwnd)
+    if not airserver_hwnd:
+        return
+    l, t, r, b = win32gui.GetWindowRect(airserver_hwnd)
     pyautogui.moveTo((l+r)//2, (t+b)//2)
     pyautogui.doubleClick()
     logger.info("⛶ Fullscreen toggled")
@@ -173,14 +190,14 @@ def main():
 
         if active and not was_active:
             last_was_video = is_video
-            logger.info(f"+ Session started (video={is_video})")
+            logger.info(f"+ AirPlay session started (video={is_video})")
 
             jiggle_mouse_and_save()
             if raise_window():
                 prevent_display_off()
                 if AUTO_FULLSCREEN and last_was_video:
                     double_fullscreen()
-                    time.sleep(2)    # 컨트롤 바 숨김 대기
+                    time.sleep(2)   # 컨트롤 바 숨김 대기
                     move_mouse_away()
 
             was_active     = True
@@ -192,12 +209,9 @@ def main():
                 last_keepalive = datetime.now()
 
         elif not active and was_active:
-            logger.info("- Session ended")
-            # **변경**: 먼저 창 내리고
+            logger.info("- AirPlay session ended")
             lower_window()
-            # 화면절전 해제 취소
             clear_execution_state()
-            # 마우스 원위치 복원
             restore_mouse_position()
             was_active = False
 
